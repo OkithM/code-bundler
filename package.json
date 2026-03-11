@@ -16,7 +16,7 @@
     "commands": [
       {
         "command": "code-bundler.bundleProject",
-        "title": "Bundle Code for Gemini"
+        "title": "Bundle Code"
       }
     ],
     "menus": {

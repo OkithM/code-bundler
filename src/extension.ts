@@ -42,7 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
         try {
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: "Creating Gemini bundle file...",
+                title: "Creating Code bundle file...",
                 cancellable: false
             }, async () => {
                 traverseLib(libFolder);
@@ -52,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
                     return;
                 }
 
-                const bundleFileName = 'gemini_bundle.txt';
+                const bundleFileName = 'code_bundle.txt';
                 const bundleFilePath = path.join(projectRoot, bundleFileName);
 
                 // 1. Save file locally to project root
@@ -90,7 +90,7 @@ export function activate(context: vscode.ExtensionContext) {
                     });
                 }
 
-                vscode.window.showInformationMessage(`"${bundleFileName}" ready! Pressed Ctrl+V in Gemini to upload.`);
+                vscode.window.showInformationMessage(`"${bundleFileName}" ready!`);
             });
         } catch (error: any) {
             vscode.window.showErrorMessage(`Failed to create bundle file: ${error.message}`);
