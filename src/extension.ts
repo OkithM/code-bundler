@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { exec } from 'child_process'; // Imported to run native system commands
 
 export function activate(context: vscode.ExtensionContext) {
     let disposable = vscode.commands.registerCommand('gemini-bundler.bundleProject', async (uri: vscode.Uri) => {
-        // Find the workspace root folder
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri || vscode.window.activeTextEditor?.document.uri);
-        
+
         if (!workspaceFolder) {
             vscode.window.showErrorMessage('Please open a Flutter project workspace first.');
             return;
@@ -15,7 +15,6 @@ export function activate(context: vscode.ExtensionContext) {
         const projectRoot = workspaceFolder.uri.fsPath;
         const libFolder = path.join(projectRoot, 'lib');
 
-        // Safety check to ensure a lib folder actually exists
         if (!fs.existsSync(libFolder)) {
             vscode.window.showErrorMessage('Could not find a "lib" folder in this project root.');
             return;
@@ -23,7 +22,6 @@ export function activate(context: vscode.ExtensionContext) {
 
         let mergedOutput = '';
 
-        // Recursively look through only the lib folder
         function traverseLib(currentDir: string) {
             const items = fs.readdirSync(currentDir);
 
@@ -34,11 +32,8 @@ export function activate(context: vscode.ExtensionContext) {
                 if (stat.isDirectory()) {
                     traverseLib(fullPath);
                 } else if (stat.isFile()) {
-                    // Get path relative to the inside of the lib folder
                     const relativePath = path.relative(libFolder, fullPath).replace(/\\/g, '/');
                     const content = fs.readFileSync(fullPath, 'utf-8');
-                    
-                    // Format: //path followed by code
                     mergedOutput += `//${relativePath}\n${content}\n\n`;
                 }
             }
@@ -51,7 +46,7 @@ export function activate(context: vscode.ExtensionContext) {
                 cancellable: false
             }, async () => {
                 traverseLib(libFolder);
-                
+
                 if (mergedOutput.trim() === '') {
                     vscode.window.showWarningMessage('The "lib" folder appears to be empty.');
                     return;
@@ -60,30 +55,42 @@ export function activate(context: vscode.ExtensionContext) {
                 const bundleFileName = 'gemini_bundle.txt';
                 const bundleFilePath = path.join(projectRoot, bundleFileName);
 
-                // 1. Create/Overwrite the bundle file at the project root
+                // 1. Save file locally to project root
                 fs.writeFileSync(bundleFilePath, mergedOutput, 'utf-8');
 
-                // 2. Handle adding the file to .gitignore
+                // 2. Add to .gitignore if not already listed
                 const gitignorePath = path.join(projectRoot, '.gitignore');
-                
                 if (fs.existsSync(gitignorePath)) {
                     const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
                     const lines = gitignoreContent.split(/\r?\n/);
-                    
-                    // Check if the file is already listed in .gitignore to avoid duplicates
                     const isAlreadyIgnored = lines.some(line => line.trim() === bundleFileName);
-                    
+
                     if (!isAlreadyIgnored) {
-                        // Ensure clean spacing when appending to the end of the file
                         const appendPrefix = gitignoreContent.endsWith('\n') ? '' : '\n';
                         fs.appendFileSync(gitignorePath, `${appendPrefix}${bundleFileName}\n`, 'utf-8');
                     }
                 } else {
-                    // Create a new .gitignore if it doesn't exist
                     fs.writeFileSync(gitignorePath, `${bundleFileName}\n`, 'utf-8');
                 }
 
-                vscode.window.showInformationMessage(`"${bundleFileName}" created at root and added to .gitignore!`);
+                // 3. COPY THE PHYSICAL FILE OBJECT TO OS CLIPBOARD
+                // Format the file path cleanly with forward slashes to prevent shell escaping quirks
+                const safePath = bundleFilePath.replace(/\\/g, '/');
+                const platform = process.platform;
+
+                if (platform === 'win32') {
+                    // Windows Native Shell Command
+                    exec(`powershell -Command "Set-Clipboard -Path '${safePath}'"`, (err) => {
+                        if (err) vscode.window.showWarningMessage('File created, but failed to copy file object to clipboard.');
+                    });
+                } else if (platform === 'darwin') {
+                    // macOS Native Shell Command
+                    exec(`osascript -e 'set the clipboard to (POSIX file "${safePath}")'`, (err) => {
+                        if (err) vscode.window.showWarningMessage('File created, but failed to copy file object to clipboard.');
+                    });
+                }
+
+                vscode.window.showInformationMessage(`"${bundleFileName}" ready! Pressed Ctrl+V in Gemini to upload.`);
             });
         } catch (error: any) {
             vscode.window.showErrorMessage(`Failed to create bundle file: ${error.message}`);
@@ -93,4 +100,4 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(disposable);
 }
 
-export function deactivate() {}
+export function deactivate() { }
