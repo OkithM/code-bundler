@@ -34,20 +34,20 @@ export function activate(context: vscode.ExtensionContext) {
                 if (stat.isDirectory()) {
                     traverseLib(fullPath);
                 } else if (stat.isFile()) {
-                    // Get path relative to the inside of the lib folder (e.g., "main.dart" or "pages/home.dart")
+                    // Get path relative to the inside of the lib folder
                     const relativePath = path.relative(libFolder, fullPath).replace(/\\/g, '/');
                     const content = fs.readFileSync(fullPath, 'utf-8');
                     
-                    // Format exactly as requested: //path followed by code
+                    // Format: //path followed by code
                     mergedOutput += `//${relativePath}\n${content}\n\n`;
                 }
             }
         }
 
         try {
-            vscode.window.withProgress({
+            await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: "Bundling lib/ folder for Gemini...",
+                title: "Creating Gemini bundle file...",
                 cancellable: false
             }, async () => {
                 traverseLib(libFolder);
@@ -57,12 +57,36 @@ export function activate(context: vscode.ExtensionContext) {
                     return;
                 }
 
-                // Copy the final bundled text to your clipboard
-                await vscode.env.clipboard.writeText(mergedOutput);
-                vscode.window.showInformationMessage('All lib/ files merged and copied to clipboard!');
+                const bundleFileName = 'gemini_bundle.txt';
+                const bundleFilePath = path.join(projectRoot, bundleFileName);
+
+                // 1. Create/Overwrite the bundle file at the project root
+                fs.writeFileSync(bundleFilePath, mergedOutput, 'utf-8');
+
+                // 2. Handle adding the file to .gitignore
+                const gitignorePath = path.join(projectRoot, '.gitignore');
+                
+                if (fs.existsSync(gitignorePath)) {
+                    const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
+                    const lines = gitignoreContent.split(/\r?\n/);
+                    
+                    // Check if the file is already listed in .gitignore to avoid duplicates
+                    const isAlreadyIgnored = lines.some(line => line.trim() === bundleFileName);
+                    
+                    if (!isAlreadyIgnored) {
+                        // Ensure clean spacing when appending to the end of the file
+                        const appendPrefix = gitignoreContent.endsWith('\n') ? '' : '\n';
+                        fs.appendFileSync(gitignorePath, `${appendPrefix}${bundleFileName}\n`, 'utf-8');
+                    }
+                } else {
+                    // Create a new .gitignore if it doesn't exist
+                    fs.writeFileSync(gitignorePath, `${bundleFileName}\n`, 'utf-8');
+                }
+
+                vscode.window.showInformationMessage(`"${bundleFileName}" created at root and added to .gitignore!`);
             });
         } catch (error: any) {
-            vscode.window.showErrorMessage(`Failed to bundle lib folder: ${error.message}`);
+            vscode.window.showErrorMessage(`Failed to create bundle file: ${error.message}`);
         }
     });
 
