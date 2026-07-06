@@ -4,7 +4,7 @@ import * as path from 'path';
 import { exec } from 'child_process'; // Imported to run native system commands
 
 export function activate(context: vscode.ExtensionContext) {
-    let disposable = vscode.commands.registerCommand('gemini-bundler.bundleProject', async (uri: vscode.Uri) => {
+    let disposable = vscode.commands.registerCommand('code-bundler.bundleProject', async (uri: vscode.Uri) => {
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri || vscode.window.activeTextEditor?.document.uri);
 
         if (!workspaceFolder) {

@@ -1,6 +1,6 @@
 {
-  "name": "gemini-bundler",
-  "displayName": "Gemini Bundler",
+  "name": "code-bundler",
+  "displayName": "Code Bundler",
   "description": "",
   "version": "0.0.1",
   "publisher": "OkithM",
@@ -15,14 +15,14 @@
   "contributes": {
     "commands": [
       {
-        "command": "gemini-bundler.bundleProject",
+        "command": "code-bundler.bundleProject",
         "title": "Bundle Code for Gemini"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "command": "gemini-bundler.bundleProject",
+          "command": "code-bundler.bundleProject",
           "when": "explorerResourceIsFolder",
           "group": "navigation"
         }
